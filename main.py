@@ -82,9 +82,14 @@ else:
 
 
 # --- -------------------------------------------------------------------------------------------Data loading section --------------------------------------------------------------------------------------------------------------- ---
-
+cols = ['content_type', 'az_generated_suggestion_flag', 'suggestion_pk',
+       'suggestion_generated_date', 'mini_brick_code',
+      'brick', 'territory', 'vae_suggestion_transaction_flag',
+       'idetail_suggestion_transaction_flag', 'product', 'sales_mini_brick', 
+       'sales_brick', 'sales_brick_desc', 'sales_territory',
+       'sales_business_unit',]
 # --- Load usage Data ---
-suggestions = pd.read_parquet('https://storage.googleapis.com/sales_az/trixeo_santis_total_suggestions_09Apr25.parquet')
+suggestions = pd.read_parquet('https://storage.googleapis.com/sales_az/trixeo_santis_total_suggestions_09Apr25.parquet', columns=cols)
 sales = pd.read_parquet('https://storage.googleapis.com/sales_az/trixeo_total_sales_09Apr25.parquet')
 
 r,top_group_month_wise, bottom_group_month_wise, fig_usage= utils.generate_usage(suggestions,quantiles=quantiles,usage_threshold=usage_threshold,content_type=content_type,usage_level=usage_level)
