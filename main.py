@@ -92,6 +92,9 @@ cols = ['content_type', 'az_generated_suggestion_flag', 'suggestion_pk',
 suggestions = pd.read_parquet('https://storage.googleapis.com/sales_az/trixeo_santis_total_suggestions_09Apr25.parquet', columns=cols)
 sales = pd.read_parquet('https://storage.googleapis.com/sales_az/trixeo_total_sales_09Apr25.parquet')
 
+st.write(suggestions.info(memory_usage="deep"))
+st.write(sales.info(memory_usage="deep"))
+
 r,top_group_month_wise, bottom_group_month_wise, fig_usage= utils.generate_usage(suggestions,quantiles=quantiles,usage_threshold=usage_threshold,content_type=content_type,usage_level=usage_level)
 
 # --- Load Sales Data ---
