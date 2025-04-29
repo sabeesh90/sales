@@ -14,43 +14,50 @@ import pandas as pd
 import plotly.graph_objects as go
 import sys
 
-def generate_usage(suggestions, quantiles=[0.30, 0.70], usage_threshold=0,
+def generate_usage(suggestions,sales_business_unit , quantiles=[0.30, 0.70], usage_threshold=0,
                   content_type='VAE', usage_level='mini_brick_code'):
     print('Generating Usage for Given suggestions')
     print('xxx----------------------------------------------------xxx')
 
     # 1) Filter on content_type if given
     if content_type in ('VAE', 'iDetail'):
-        suggestions = suggestions[suggestions.content_type == content_type]
+        suggestions_mod = suggestions[suggestions.content_type == content_type]
         flag = content_type.lower()
     else:
         # no filtering, count both
         flag = None
+        suggestions_mod = suggestions.copy()
 
+    print(suggestions_mod.shape)
+    print(sales_business_unit)
+
+    print(suggestions_mod.sales_business_unit.unique())
     # 2) Clean invalid codes and flags
-    suggestions = suggestions[
-        suggestions[usage_level].notna() &
-        (suggestions[usage_level] != '--') &
-        (suggestions.az_generated_suggestion_flag == 'Y')
+    suggestions_mod = suggestions_mod[suggestions_mod.sales_business_unit == sales_business_unit]
+    print(suggestions_mod.shape)
+    suggestions_mod = suggestions_mod[
+        suggestions_mod[usage_level].notna() &
+        (suggestions_mod[usage_level] != '--') &
+        (suggestions_mod.az_generated_suggestion_flag == 'Y')
     ]
 
-    print('The number of rows are ', suggestions.shape)
-    print('The number of bricks are ', suggestions[usage_level].nunique())
-    print('The number of unique suggestion_pk are ', suggestions.suggestion_pk.nunique())
+    print('The number of rows are ', suggestions_mod.shape)
+    print('The number of bricks are ', suggestions_mod[usage_level].nunique())
+    print('The number of unique suggestion_pk are ', suggestions_mod.suggestion_pk.nunique())
 
     # 3) Create a unified accepted_flag boolean
     if flag:
         col = f"{flag}_suggestion_transaction_flag"
-        suggestions['accepted_flag'] = (suggestions[col] == 'Y')
+        suggestions_mod['accepted_flag'] = (suggestions_mod[col] == 'Y')
     else:
-        suggestions['accepted_flag'] = (
-            (suggestions['vae_suggestion_transaction_flag'] == 'Y') |
-            (suggestions['idetail_suggestion_transaction_flag'] == 'Y')
+        suggestions_mod['accepted_flag'] = (
+            (suggestions_mod['vae_suggestion_transaction_flag'] == 'Y') |
+            (suggestions_mod['idetail_suggestion_transaction_flag'] == 'Y')
         )
 
     # 4) Aggregate overall usage summary
     result = (
-        suggestions
+        suggestions_mod
         .groupby(usage_level)
         .agg(
             total_suggestions_sent       = ('suggestion_pk', 'nunique'),
@@ -105,13 +112,13 @@ def generate_usage(suggestions, quantiles=[0.30, 0.70], usage_threshold=0,
     bottom_group = result_pos.loc[result_pos['quantile'] == f'Below {quantiles[0]}', usage_level].tolist()
 
     # 10) Extract month-year and aggregate month-wise
-    suggestions['month_year'] = (
-        pd.to_datetime(suggestions['suggestion_generated_date'])
+    suggestions_mod['month_year'] = (
+        pd.to_datetime(suggestions_mod['suggestion_generated_date'])
           .dt.to_period('M')
           .dt.to_timestamp()
     )
     intermediate = (
-        suggestions
+        suggestions_mod
         .groupby([usage_level, 'month_year'])
         .agg(
             total_suggestions_sent       = ('suggestion_pk', 'nunique'),
@@ -539,8 +546,9 @@ def project_difference_in_rolling_mean(
     ], ignore_index=True)
 
     # 8) Compute % increase
-    last_real = history['difference'].iloc[-1]
+    last_real = diff['difference'].iloc[-1]
     last_proj = forecast['difference'].iloc[-1]
+    print(last_real, last_proj,'-------------------------------------------------------------------------')
     pct_increase = (last_real-last_proj ) / last_proj * 100
 
     # 9) Build Plotly figure with data labels
