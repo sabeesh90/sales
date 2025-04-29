@@ -2,6 +2,7 @@
 base="light"
 
 [server]
-headless = true
-enableCORS = false
-runOnSave = false
+headless             = true
+enableCORS           = false
+enableXsrfProtection = false
+runOnSave            = false
