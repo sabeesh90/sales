@@ -21,8 +21,44 @@ st.markdown(
 
 # --- Sidebar Settings ---
 
+
+with st.sidebar.expander("Brand Settings", expanded=True):
+
+    # Selction of brands
+    brand = st.selectbox("Brand Type", options=['trixeo', 'forxiga'])
+
+    # Selection of levels
+    level = st.selectbox("Brand Type", options=['mini_brick','brick'])
+    
+    # Selection of business unit
+    sales_line = st.selectbox("Brand Type", options=['AZ', 'Santis'])
+    
+    # seocnd level degfinitions for sales and suggestions repsectively
+    if level == 'mini_brick':
+        usage_level = 'mini_brick_code'
+        sales_level = 'mini_brick'
+    elif level == 'brick':
+        usage_level = 'brick'
+        sales_level = 'brick'
+
+    if sales_line == 'AZ':
+        business_unit = 'AZ_RESPI_INH'
+        sales_business_unit = 'AZ_RESPI_INH'
+
+    elif sales_line == 'Santis':
+        business_unit = 'SAN_MIX'
+        sales_business_unit = 'SAN_MIX'
+    
+    if brand == 'trixeo':
+        product_name = 'TRIXEO + IMP.'
+    elif brand == 'forxiga':
+        product_name = 'FORXIGA + IMP.'
+
+
+
+    
 # General Settings
-with st.sidebar.expander("⚙️ Usage Settings", expanded=True):
+with st.sidebar.expander("⚙️ Usage Settings", expanded=False):
     # Quantiles
     quantile_low = st.slider("Low quantile", 0.0, 1.0, 0.20, 0.05)
     quantile_high = st.slider("High quantile", 0.0, 1.0, 0.80, 0.05)
@@ -37,65 +73,41 @@ with st.sidebar.expander("⚙️ Usage Settings", expanded=True):
     # Content Type
     content_type = st.selectbox("Content Type", options=[None, 'VAE', 'iDetail'])
 
-    # Usage Level
-    usage_level = st.selectbox("Usage Level", options=['mini_brick_code', 'brick'])
-
     n = st.number_input("Top N", min_value=0, max_value=100, value=10)
 
 # ---------------------------------------------
 # --- NEW Sales Analysis Settings Section ---
 # ---------------------------------------------
-with st.sidebar.expander("📈 Sales Analysis Settings", expanded=True):
-    # Sales Level
-    sales_level = st.selectbox("Sales Level", options=['mini_brick', 'brick'])
-
-    # Business Unit
-    business_unit = st.selectbox("Business Unit", options=['SAN_MIX', 'AZ_RESPI_INH'])
+with st.sidebar.expander("📈 Sales Analysis Settings", expanded=False):
 
     # Recommendation Date
     rec_date = st.date_input("Recommendation Date", value=pd.to_datetime('2024-06-01')).strftime('%d-%b-%Y')
 
-    # Product Name
-    product_name = st.selectbox("Product Name", options=['TRIXEO + IMP.', 'Other Product'])  # <-- you can add more options here
-
     # Moving Average Window
     window = st.slider("Moving Average Window (months)", min_value=1, max_value=12, value=3)
 
-#--------------------------------------------------------------------------------------------------------------sync patch----------------------------------------------------------------------------------------------
-
-# ---- Add a theme selector to your sidebar ----
-theme = st.sidebar.radio("Theme", ("Light", "Dark"))
-
-# ---- Based on that, pick your colors + Plotly template ----
-if theme == "Light":
-    card_bg    = "#f9f9f9"
-    card_text  = "#333"
-    plot_bg    = "white"
-    text_color = "#000"
-    template   = "plotly_white"
-else:
-    card_bg    = "#2b2b2b"
-    card_text  = "#eee"
-    plot_bg    = "#222"
-    text_color = "#fff"
-    template   = "plotly_dark"
-
 
 # --- -------------------------------------------------------------------------------------------Data loading section --------------------------------------------------------------------------------------------------------------- ---
-cols = ['content_type', 'az_generated_suggestion_flag', 'suggestion_pk',
-       'suggestion_generated_date', 'mini_brick_code',
-      'brick', 'territory', 'vae_suggestion_transaction_flag',
-       'idetail_suggestion_transaction_flag', 'product', 'sales_mini_brick', 
-       'sales_brick', 'sales_brick_desc', 'sales_territory',
-       'sales_business_unit',]
 # --- Load usage Data ---
-suggestions = pd.read_parquet('https://storage.googleapis.com/sales_az/trixeo_santis_total_suggestions_09Apr25.parquet', columns=cols)
-sales = pd.read_parquet('https://storage.googleapis.com/sales_az/trixeo_total_sales_09Apr25.parquet')
 
-st.write(suggestions.info(memory_usage="deep"))
-st.write(sales.info(memory_usage="deep"))
+@st.cache_data(ttl=60*60, show_spinner=False)
+def load_data(loc):
+    return pd.read_parquet(loc,use_threads=True)
 
-r,top_group_month_wise, bottom_group_month_wise, fig_usage= utils.generate_usage(suggestions,quantiles=quantiles,usage_threshold=usage_threshold,content_type=content_type,usage_level=usage_level)
+
+print('before loading')
+
+with st.spinner(f"Loading {brand} Sales data, please wait…",show_time=True):
+    sales = load_data(f'https://storage.googleapis.com/sales_az/{brand}_sales.parquet')
+    print('Sales loaded')
+    print(sales.shape)
+
+with st.spinner(f"Loading {brand} Suggestions data, please wait…", show_time=True):
+    suggestions = load_data(f'https://storage.googleapis.com/sales_az/{brand}_suggestions.parquet')
+    print('suggestions loaded')
+    print(suggestions.shape)
+
+r,top_group_month_wise, bottom_group_month_wise, fig_usage= utils.generate_usage(suggestions,sales_business_unit,quantiles=quantiles,usage_threshold=usage_threshold,content_type=content_type,usage_level=usage_level)
 
 # --- Load Sales Data ---
 sales_grouped_average_low, sales_grouped_average_high, \
